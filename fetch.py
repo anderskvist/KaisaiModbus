@@ -136,20 +136,28 @@ def main():
         "power_output_kwh": get_dword(145)
     }
 
-    data =  {
-        "device": "KAISAI KHC-08RY3-B",
-        "data_interval_minutes": 1,
-        "unit": "kW",
-        "timeseries": [
-            timeserie
-        ],
-        "metadata": {
-            "description": "",
-            "location": "",
-            "system_status": "",
-            "total_duration_minutes": 60
+    f = open('/dev/shm/kaisai.json')
+    data = json.load(f)
+
+    if not data:
+        data =  {
+            "device": "KAISAI KHC-08RY3-B",
+            "data_interval_minutes": 1,
+            "unit": "kW",
+            "timeseries": [
+                timeserie
+            ],
+            "metadata": {
+                "description": "",
+                "location": "",
+                "system_status": "",
+                "total_duration_minutes": 60
+            }
         }
-    }
+
+    data["timeseries"].append(timeserie)
+    # limit timeseries to 60 entries
+    del data["timeseries"][:-60]
 
     print(json.dumps(data, indent=2))
 
