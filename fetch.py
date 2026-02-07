@@ -4,12 +4,8 @@
 # Documentation: https://api.library.loxone.com/downloader/file/384/Modbus%20KHA_KMK,%20KHC%20v2.pdf
 
 from pymodbus.client import ModbusSerialClient
-from pymodbus.exceptions import ModbusIOException
-from pymodbus.payload import BinaryPayloadDecoder
-from pymodbus.constants import Endian
 from datetime import datetime, timezone
 import time
-import os
 import json
 
 # Modbus RTU client config
@@ -41,16 +37,11 @@ def get_reg(address, count=1, raw = False):
 
 def get_dword(address):
     registers = get_reg(address, count=2, raw=True)
-    return client.convert_from_registers(registers, data_type=client.DATATYPE.INT32, word_order='big')
-
-def print_reg(description, remark, address):
-    print(f"{description} ({remark}): {uint16_to_int16(get_reg(address)[0])}")
-
-def print_dword(description, remark, address):
-    print(f"{description} ({remark}): {get_dword(address)}")
-
-def print_bit(description, remark, address, bit):
-    print(f"Defrost: {(get_reg(address)[0] & bit == bit)}")
+    return client.convert_from_registers(
+        registers,
+        data_type=client.DATATYPE.INT32,
+        word_order='big'
+    )
 
 def main():
     if not client.connect():
@@ -136,11 +127,14 @@ def main():
         "power_output_kwh": get_dword(145)
     }
 
-    f = open('/dev/shm/kaisai.json')
-    data = json.load(f)
+    try:
+        with open('/dev/shm/kaisai.json') as f:
+            data = json.load(f)
+    except Exception:
+        data = None
 
     if not data:
-        data =  {
+        data = {
             "device": "KAISAI KHC-08RY3-B",
             "data_interval_minutes": 1,
             "unit": "kW",
@@ -164,6 +158,8 @@ def main():
     with open('/dev/shm/kaisai.json', 'w') as f:
         json.dump(data, f)
 
+    print("✅ Sample published")
+
+
 if __name__ == "__main__":
     main()
-
