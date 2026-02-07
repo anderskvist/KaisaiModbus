@@ -7,8 +7,31 @@ from pymodbus.client import ModbusSerialClient
 from datetime import datetime, timezone
 import time
 import json
+import yaml
 
-# Modbus RTU client config
+# MQTT
+import paho.mqtt.client as mqtt
+
+# InfluxDB
+from influxdb_client import InfluxDBClient, Point, WriteOptions
+
+
+# ---------------- CONFIG ----------------
+
+CONFIG_FILE = "config.yaml"
+
+def load_config():
+    try:
+        with open(CONFIG_FILE) as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        return {}
+
+cfg = load_config()
+
+
+# ---------------- MODBUS ----------------
+
 client = ModbusSerialClient(
     port='/dev/ttyAMA0',
     baudrate=9600,
@@ -21,7 +44,7 @@ client = ModbusSerialClient(
 def uint16_to_int16(x):
     return x - 0x10000 if x & 0x8000 else x
 
-def get_reg(address, count=1, raw = False):
+def get_reg(address, count=1, raw=False):
     result = client.read_holding_registers(
         address=address,
         count=count,
@@ -29,11 +52,11 @@ def get_reg(address, count=1, raw = False):
     )
     if result.isError():
         print("⚠️ Modbus error:", result)
-    else:
-        if raw:
-            return result.registers
-        else:
-            return uint16_to_int16(result.registers[0])
+        return 0 if not raw else [0] * count
+
+    if raw:
+        return result.registers
+    return uint16_to_int16(result.registers[0])
 
 def get_dword(address):
     registers = get_reg(address, count=2, raw=True)
@@ -42,6 +65,42 @@ def get_dword(address):
         data_type=client.DATATYPE.INT32,
         word_order='big'
     )
+
+
+# ---------------- MQTT ----------------
+
+mqtt_client = None
+mqtt_topic = None
+
+if cfg.get("mqtt", {}).get("enabled"):
+    mcfg = cfg["mqtt"]
+    mqtt_client = mqtt.Client()
+    if mcfg.get("username"):
+        mqtt_client.username_pw_set(mcfg["username"], mcfg["password"])
+    mqtt_client.connect(mcfg["broker"], mcfg.get("port", 1883), 60)
+    mqtt_topic = mcfg["topic"]
+    print("✅ MQTT enabled")
+
+
+# ---------------- INFLUXDB ----------------
+
+influx = None
+if cfg.get("influxdb", {}).get("enabled"):
+    icfg = cfg["influxdb"]
+    influx = {
+        "measurement": icfg["measurement"],
+        "bucket": icfg["bucket"],
+        "org": icfg["org"],
+        "write_api": InfluxDBClient(
+            url=icfg["url"],
+            token=icfg["token"],
+            org=icfg["org"]
+        ).write_api(write_options=WriteOptions(batch_size=1))
+    }
+    print("✅ InfluxDB enabled")
+
+
+# ---------------- MAIN ----------------
 
 def main():
     if not client.connect():
@@ -127,6 +186,21 @@ def main():
         "power_output_kwh": get_dword(145)
     }
 
+    # ---------- MQTT ----------
+    if mqtt_client:
+        mqtt_client.publish(mqtt_topic, json.dumps(timeserie))
+
+    # ---------- InfluxDB ----------
+    if influx:
+        point = Point(influx["measurement"]).time(time.time_ns())
+        for k, v in timeserie.items():
+            if isinstance(v, (int, float)):
+                point = point.field(k, v)
+            else:
+                point = point.tag(k, str(v))
+        influx["write_api"].write(bucket=influx["bucket"], record=point)
+
+    # ---------- Local JSON buffer ----------
     try:
         with open('/dev/shm/kaisai.json') as f:
             data = json.load(f)
