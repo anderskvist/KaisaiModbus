@@ -563,15 +563,11 @@ header .subtitle {
       <span class="metric-label">Hydraulic Output</span>
       <span class="metric-value" id="val-hydraulic">--</span>
     </div>
-    <div class="metric">
-      <span class="metric-label">Setpoint T1s</span>
-      <span class="metric-value warm" id="val-setpoint">--</span>
-    </div>
   </div>
 
-  <!-- OUTDOOR -->
+  <!-- AIR -->
   <div class="panel">
-    <div class="panel-title"><span class="icon">&#9788;</span>OUTDOOR</div>
+    <div class="panel-title"><span class="icon">&#9788;</span>AIR</div>
     <div class="metric">
       <span class="metric-label">Ambient Temp (T4)</span>
       <span class="metric-value large cold" id="val-t4">--</span>
@@ -579,6 +575,10 @@ header .subtitle {
     <div class="metric">
       <span class="metric-label">Condenser Temp (T3)</span>
       <span class="metric-value cold" id="val-t3">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Fan Speed</span>
+      <span class="metric-value" id="val-fan">--</span>
     </div>
     <div class="metric">
       <span class="metric-label">Room Temp (TA)</span>
@@ -596,10 +596,6 @@ header .subtitle {
     <div class="metric">
       <span class="metric-label">Target Freq</span>
       <span class="metric-value" id="val-tgt-freq" style="color:var(--text-dim)">--</span>
-    </div>
-    <div class="metric">
-      <span class="metric-label">Fan Speed</span>
-      <span class="metric-value" id="val-fan">--</span>
     </div>
     <div class="metric">
       <span class="metric-label">Discharge Temp (Tp)</span>
@@ -664,7 +660,7 @@ header .subtitle {
     </div>
     <div class="metric">
       <span class="metric-label">Setpoint T1s</span>
-      <span class="metric-value warm" id="val-setpoint-water">--</span>
+      <span class="metric-value warm" id="val-setpoint">--</span>
     </div>
   </div>
 
@@ -1024,7 +1020,6 @@ function updateDashboard(d) {
 
   // Setpoint
   setVal('val-setpoint', sf(d.setting_water_temperature_t1s_zone1) + ' \u00B0C', prevValues);
-  setVal('val-setpoint-water', sf(d.setting_water_temperature_t1s_zone1) + ' \u00B0C', prevValues);
 
   // Defrost
   const defrostBanner = document.getElementById('defrost-banner');
