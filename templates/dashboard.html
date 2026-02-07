@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEAT PUMP // SYSTEM MONITOR</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230a0a0f'/%3E%3Cpath d='M16 4 L16 14 L22 9 L16 14 L22 19 L16 14 L16 28' stroke='%2300f0ff' stroke-width='2' fill='none'/%3E%3Cpath d='M8 16 Q12 8 16 16 Q20 24 24 16' stroke='%23ff6600' stroke-width='2' fill='none'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%2300f0ff' opacity='0.6'/%3E%3C/svg%3E">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+:root {
+  --cyan: #00f0ff;
+  --magenta: #ff00ff;
+  --yellow: #ffff00;
+  --orange: #ff6600;
+  --red: #ff0044;
+  --green: #00ff66;
+  --bg: #0a0a0f;
+  --panel-bg: rgba(10, 10, 20, 0.85);
+  --border: rgba(0, 240, 255, 0.3);
+  --text: #c0c0d0;
+  --text-dim: #606080;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* CRT scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Subtle vignette */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+header {
+  text-align: center;
+  padding: 20px 20px 10px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+header h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 1.8em;
+  letter-spacing: 6px;
+  color: var(--cyan);
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.5), 0 0 40px rgba(0, 240, 255, 0.2);
+  animation: flicker 4s infinite;
+}
+
+header .subtitle {
+  font-size: 0.75em;
+  color: var(--text-dim);
+  letter-spacing: 4px;
+  margin-top: 4px;
+}
+
+.header-status {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75em;
+}
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s infinite;
+}
+
+.status-dot.stale { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+.status-dot.error { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.8; }
+  97% { opacity: 1; }
+  98% { opacity: 0.6; }
+  99% { opacity: 1; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 5px var(--cyan), inset 0 0 5px rgba(0,240,255,0.05); }
+  50% { box-shadow: 0 0 15px var(--cyan), inset 0 0 10px rgba(0,240,255,0.1); }
+}
+
+@keyframes neon-flicker {
+  0%, 90%, 100% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+  91% { text-shadow: none; }
+  93% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+  94% { text-shadow: none; }
+}
+
+@keyframes defrost-pulse {
+  0%, 100% { opacity: 1; text-shadow: 0 0 15px #88ddff, 0 0 30px #44aaff; }
+  50% { opacity: 0.6; text-shadow: 0 0 25px #88ddff, 0 0 50px #44aaff, 0 0 80px #2288cc; }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 12px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.panel:hover {
+  border-color: var(--cyan);
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.6;
+}
+
+.panel-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65em;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.panel-title .icon { margin-right: 6px; }
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.metric:last-child { border-bottom: none; }
+
+.metric-label {
+  font-size: 0.75em;
+  color: var(--text-dim);
+}
+
+.metric-value {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+  transition: all 0.5s ease;
+}
+
+.metric-value.large {
+  font-size: 2em;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.metric-value.warm { color: var(--orange); text-shadow: 0 0 8px rgba(255,102,0,0.3); }
+.metric-value.hot { color: var(--red); text-shadow: 0 0 8px rgba(255,0,68,0.3); }
+.metric-value.cold { color: #44aaff; text-shadow: 0 0 8px rgba(68,170,255,0.3); }
+.metric-value.ok { color: var(--green); text-shadow: 0 0 8px rgba(0,255,102,0.3); }
+.metric-value.alert { color: var(--red); text-shadow: 0 0 12px rgba(255,0,68,0.5); animation: neon-flicker 2s infinite; }
+
+/* Status panel */
+.mode-display {
+  text-align: center;
+  padding: 10px;
+}
+
+.mode-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.6em;
+  font-weight: 900;
+  letter-spacing: 4px;
+  padding: 10px;
+  border: 2px solid;
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.mode-off { color: #555; border-color: #333; background: rgba(50,50,50,0.2); }
+.mode-cooling {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: rgba(0,240,255,0.05);
+  box-shadow: 0 0 20px rgba(0,240,255,0.2), inset 0 0 20px rgba(0,240,255,0.05);
+  animation: glow-pulse 3s infinite;
+}
+.mode-heating {
+  color: var(--orange);
+  border-color: var(--orange);
+  background: rgba(255,102,0,0.05);
+  box-shadow: 0 0 20px rgba(255,102,0,0.2), inset 0 0 20px rgba(255,102,0,0.05);
+  animation: glow-pulse 3s infinite;
+  --cyan: var(--orange);
+}
+
+.cop-display {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.cop-value {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.2em;
+  font-weight: 900;
+  color: var(--green);
+  text-shadow: 0 0 20px rgba(0,255,102,0.4);
+}
+
+.cop-label {
+  font-size: 0.7em;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+}
+
+/* Defrost banner */
+.defrost-banner {
+  display: none;
+  grid-column: span 4;
+  text-align: center;
+  padding: 10px 20px;
+  background: rgba(68, 170, 255, 0.08);
+  border: 2px solid #44aaff;
+  border-radius: 4px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4em;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: #88ddff;
+  animation: defrost-pulse 1.5s infinite;
+  box-shadow: 0 0 20px rgba(68, 170, 255, 0.3), inset 0 0 20px rgba(68, 170, 255, 0.05);
+}
+
+.defrost-banner.active { display: block; }
+
+/* Diagram */
+.diagram-container {
+  grid-column: span 4;
+}
+
+.diagram-svg {
+  width: 100%;
+  height: 180px;
+}
+
+.diagram-svg text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  fill: var(--text);
+}
+
+.diagram-svg .temp-label {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.diagram-svg .component-box {
+  fill: var(--panel-bg);
+  stroke-width: 1.5;
+  rx: 4;
+}
+
+.diagram-svg .comp-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  fill: var(--text-dim);
+}
+
+/* Flow particles animation */
+@keyframes flow-right {
+  0% { transform: translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(var(--flow-dist, 100px)); opacity: 0; }
+}
+
+@keyframes flow-left {
+  0% { transform: translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(calc(-1 * var(--flow-dist, 100px))); opacity: 0; }
+}
+
+.flow-particle {
+  animation-duration: 2s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+/* Graph section */
+.graph-section {
+  grid-column: span 4;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75em;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+  border-radius: 2px 2px 0 0;
+}
+
+.tab-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+.tab-btn.active {
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--cyan);
+  border-color: var(--cyan);
+  border-bottom-color: transparent;
+}
+
+.graph-canvas-wrap {
+  border: 1px solid var(--border);
+  border-radius: 0 4px 4px 4px;
+  padding: 12px;
+  background: var(--panel-bg);
+  height: 280px;
+  position: relative;
+}
+
+.graph-canvas-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Fault panel highlight */
+.panel.has-fault {
+  border-color: var(--red);
+  box-shadow: 0 0 15px rgba(255, 0, 68, 0.2);
+}
+.panel.has-fault::before {
+  background: linear-gradient(90deg, transparent, var(--red), transparent);
+}
+.panel.has-fault .panel-title { color: var(--red); }
+
+/* Fault clickable */
+.metric-value.fault-clickable { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
+
+/* Fault popup modal */
+.fault-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+  justify-content: center;
+  align-items: center;
+}
+.fault-modal-overlay.active { display: flex; }
+
+.fault-modal {
+  background: var(--bg);
+  border: 2px solid var(--red);
+  border-radius: 8px;
+  padding: 24px 32px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 0 40px rgba(255, 0, 68, 0.4), inset 0 0 20px rgba(255, 0, 68, 0.05);
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.fault-modal h2 {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--red);
+  font-size: 1em;
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+  text-shadow: 0 0 10px rgba(255, 0, 68, 0.5);
+}
+
+.fault-modal .fault-detail {
+  margin-bottom: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 0, 68, 0.15);
+}
+
+.fault-modal .fault-code {
+  color: var(--red);
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.fault-modal .fault-msg {
+  color: var(--text);
+  font-size: 0.9em;
+  margin-top: 4px;
+}
+
+.fault-modal .fault-close {
+  display: block;
+  margin-top: 16px;
+  padding: 8px 24px;
+  background: rgba(255, 0, 68, 0.1);
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: 'Share Tech Mono', monospace;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.9em;
+  letter-spacing: 2px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.fault-modal .fault-close:hover {
+  background: rgba(255, 0, 68, 0.2);
+}
+
+/* Info clock */
+.clock {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.4em;
+  color: var(--cyan);
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+  text-align: center;
+  margin: 6px 0;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+  .diagram-container, .graph-section, .defrost-banner { grid-column: span 2; }
+}
+
+@media (max-width: 700px) {
+  .grid { grid-template-columns: 1fr; gap: 8px; padding: 8px; }
+  .diagram-container, .graph-section, .defrost-banner,
+  .panel[style*="grid-column: span 2"] { grid-column: span 1 !important; }
+
+  header { padding: 12px 12px 8px; }
+  header h1 { font-size: 1.2em; letter-spacing: 3px; }
+  .header-status {
+    position: static;
+    transform: none;
+    justify-content: center;
+    margin-top: 6px;
+  }
+
+  .panel { padding: 10px; }
+  .panel-title { font-size: 0.6em; letter-spacing: 2px; margin-bottom: 8px; }
+  .metric-value { font-size: 0.95em; }
+  .metric-value.large { font-size: 1.5em; }
+  .metric-label { font-size: 0.7em; }
+
+  .cop-value { font-size: 1.6em; }
+  .mode-label { font-size: 1.2em; letter-spacing: 2px; padding: 8px; }
+
+  .diagram-container { overflow-x: auto; }
+  .diagram-svg { min-width: 700px; }
+
+  .tab-btn { padding: 5px 8px; font-size: 0.65em; }
+
+  .defrost-banner { font-size: 1em; letter-spacing: 3px; padding: 8px 12px; }
+}
+
+/* Value transition flash */
+.flash { animation: val-flash 0.6s ease; }
+@keyframes val-flash {
+  0% { color: #fff; text-shadow: 0 0 15px #fff; }
+  100% { }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>HEAT PUMP MONITOR</h1>
+  <div class="subtitle">SYSTEM DIAGNOSTICS INTERFACE v2.1</div>
+  <div class="header-status">
+    <div class="status-dot" id="conn-dot"></div>
+    <span id="conn-label">CONNECTED</span>
+  </div>
+</header>
+
+<!-- Defrost Banner -->
+<div class="grid" style="padding-bottom:0">
+  <div class="defrost-banner" id="defrost-banner">&#10052; DEFROSTING &#10052;</div>
+</div>
+
+<div class="grid">
+
+  <!-- STATUS -->
+  <div class="panel" id="panel-status">
+    <div class="panel-title"><span class="icon">&#9632;</span>OPERATING STATUS</div>
+    <div class="mode-display">
+      <div class="mode-label mode-off" id="mode-indicator">---</div>
+    </div>
+    <div class="cop-display">
+      <div class="cop-label">COEFFICIENT OF PERFORMANCE</div>
+      <div class="cop-value" id="cop-val">--</div>
+    </div>
+    <div class="metric" style="margin-top:8px">
+      <span class="metric-label">Capacity</span>
+      <span class="metric-value" id="val-capacity">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Hydraulic Output</span>
+      <span class="metric-value" id="val-hydraulic">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Setpoint T1s</span>
+      <span class="metric-value warm" id="val-setpoint">--</span>
+    </div>
+  </div>
+
+  <!-- OUTDOOR -->
+  <div class="panel">
+    <div class="panel-title"><span class="icon">&#9788;</span>OUTDOOR</div>
+    <div class="metric">
+      <span class="metric-label">Ambient Temp (T4)</span>
+      <span class="metric-value large cold" id="val-t4">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Condenser Temp (T3)</span>
+      <span class="metric-value cold" id="val-t3">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Room Temp (TA)</span>
+      <span class="metric-value" id="val-ta">--</span>
+    </div>
+  </div>
+
+  <!-- FAN / COMPRESSOR -->
+  <div class="panel">
+    <div class="panel-title"><span class="icon">&#9881;</span>FAN &amp; COMPRESSOR</div>
+    <div class="metric">
+      <span class="metric-label">Compressor Freq</span>
+      <span class="metric-value" id="val-freq">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Target Freq</span>
+      <span class="metric-value" id="val-tgt-freq" style="color:var(--text-dim)">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Fan Speed</span>
+      <span class="metric-value" id="val-fan">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Discharge Temp (Tp)</span>
+      <span class="metric-value warm" id="val-discharge">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Return Air Temp</span>
+      <span class="metric-value cold" id="val-return">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Module Temp (Tf)</span>
+      <span class="metric-value" id="val-tf">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Operation Time</span>
+      <span class="metric-value" id="val-hours">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">PMV Openness</span>
+      <span class="metric-value" id="val-pmv">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Refrigerant Liquid (T2)</span>
+      <span class="metric-value warm" id="val-t2">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Refrigerant Gas (T2b)</span>
+      <span class="metric-value warm" id="val-t2b">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">High Pressure</span>
+      <span class="metric-value" id="val-p-high">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Low Pressure</span>
+      <span class="metric-value" id="val-p-low">--</span>
+    </div>
+  </div>
+
+  <!-- WATER -->
+  <div class="panel">
+    <div class="panel-title"><span class="icon">&#9829;</span>WATER CIRCUIT</div>
+    <div class="metric">
+      <span class="metric-label">Water Outlet (TW_out)</span>
+      <span class="metric-value warm" id="val-tw-out">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Water Inlet (TW_in)</span>
+      <span class="metric-value warm" id="val-tw-in">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Total Outlet (T1)</span>
+      <span class="metric-value warm" id="val-t1">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Post-Heater (T1b)</span>
+      <span class="metric-value" id="val-t1b">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Water Flow</span>
+      <span class="metric-value" id="val-flow">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Setpoint T1s</span>
+      <span class="metric-value warm" id="val-setpoint-water">--</span>
+    </div>
+  </div>
+
+  <!-- POWER -->
+  <div class="panel" style="grid-column: span 2;">
+    <div class="panel-title"><span class="icon">&#9889;</span>POWER</div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 20px;">
+      <div class="metric">
+        <span class="metric-label">Current</span>
+        <span class="metric-value" id="val-current">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Voltage</span>
+        <span class="metric-value" id="val-voltage">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">DC Bus Current</span>
+        <span class="metric-value" id="val-dc-i">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">DC Bus Voltage</span>
+        <span class="metric-value" id="val-dc-v">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Elec. Consumption (total)</span>
+        <span class="metric-value" id="val-elec">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Power Output (total)</span>
+        <span class="metric-value" id="val-output">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Inst. Power In</span>
+        <span class="metric-value" id="val-pin">--</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Lifetime COP</span>
+        <span class="metric-value" id="val-lcop">--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ERRORS -->
+  <div class="panel" id="panel-fault">
+    <div class="panel-title"><span class="icon">&#9888;</span>FAULT STATUS</div>
+    <div class="metric">
+      <span class="metric-label">Current Fault</span>
+      <span class="metric-value" id="val-fault0">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Fault 1</span>
+      <span class="metric-value" id="val-fault1">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Fault 2</span>
+      <span class="metric-value" id="val-fault2">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Fault 3</span>
+      <span class="metric-value" id="val-fault3">--</span>
+    </div>
+  </div>
+
+  <!-- INFO / CLOCK -->
+  <div class="panel">
+    <div class="panel-title"><span class="icon">&#8986;</span>SYSTEM INFO</div>
+    <div class="clock" id="live-clock">--:--:--</div>
+    <div class="metric" style="margin-top:8px">
+      <span class="metric-label">Data Timestamp</span>
+      <span class="metric-value" id="val-timestamp" style="font-size:0.8em">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Last Refresh</span>
+      <span class="metric-value" id="val-refreshed" style="font-size:0.8em;color:var(--text-dim)">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Device</span>
+      <span class="metric-value" id="val-device" style="font-size:0.8em;color:var(--text-dim)">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Location</span>
+      <span class="metric-value" id="val-location" style="font-size:0.8em;color:var(--text-dim)">--</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Description</span>
+      <span class="metric-value" id="val-description" style="font-size:0.7em;color:var(--text-dim)">--</span>
+    </div>
+  </div>
+
+  <!-- PRINCIPLE DIAGRAM -->
+  <div class="panel diagram-container">
+    <div class="panel-title"><span class="icon">&#9670;</span>SYSTEM DIAGRAM</div>
+    <svg class="diagram-svg" viewBox="0 0 900 170" xmlns="http://www.w3.org/2000/svg">
+      <!-- Outdoor Air -->
+      <rect x="10" y="30" width="130" height="110" class="component-box" stroke="#44aaff"/>
+      <text x="75" y="55" text-anchor="middle" class="comp-label" fill="#44aaff">OUTDOOR AIR</text>
+      <text x="75" y="80" text-anchor="middle" class="temp-label" fill="#44aaff" id="diag-t4">--</text>
+      <text x="75" y="100" text-anchor="middle" font-size="9" fill="#606080" id="diag-fan">Fan: --</text>
+
+      <!-- Arrow: Outdoor -> Compressor (cold side) -->
+      <line x1="140" y1="85" x2="230" y2="85" stroke="#44aaff" stroke-width="2" stroke-dasharray="6,4">
+        <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+      </line>
+      <polygon points="225,80 235,85 225,90" fill="#44aaff"/>
+      <text x="185" y="78" text-anchor="middle" font-size="9" fill="#44aaff">COLD</text>
+
+      <!-- Compressor -->
+      <rect x="235" y="15" width="180" height="140" class="component-box" stroke="var(--magenta)"/>
+      <text x="325" y="40" text-anchor="middle" class="comp-label" fill="var(--magenta)">COMPRESSOR</text>
+      <text x="325" y="65" text-anchor="middle" class="temp-label" fill="var(--orange)" id="diag-discharge">Tp: --</text>
+      <text x="325" y="85" text-anchor="middle" class="temp-label" fill="#44aaff" id="diag-return">Ret: --</text>
+      <text x="325" y="108" text-anchor="middle" font-size="10" fill="var(--cyan)" id="diag-freq">-- Hz</text>
+      <text x="325" y="125" text-anchor="middle" font-size="9" fill="#606080" id="diag-pmv">PMV: --</text>
+      <text x="325" y="145" text-anchor="middle" font-size="9" fill="#606080" id="diag-pressure">HP:-- / LP:--</text>
+      <!-- Defrost overlay text -->
+      <text x="325" y="12" text-anchor="middle" font-size="10" fill="#88ddff" id="diag-defrost" style="display:none" font-weight="bold">DEFROST</text>
+
+      <!-- Arrow: Compressor -> Water (hot side) -->
+      <line x1="415" y1="85" x2="505" y2="85" stroke="var(--orange)" stroke-width="2" stroke-dasharray="6,4">
+        <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+      </line>
+      <polygon points="500,80 510,85 500,90" fill="var(--orange)"/>
+      <text x="460" y="78" text-anchor="middle" font-size="9" fill="var(--orange)">HOT</text>
+
+      <!-- Water Heat Exchanger -->
+      <rect x="510" y="30" width="160" height="110" class="component-box" stroke="var(--orange)"/>
+      <text x="590" y="55" text-anchor="middle" class="comp-label" fill="var(--orange)">WATER CIRCUIT</text>
+      <text x="590" y="80" text-anchor="middle" class="temp-label" fill="var(--orange)" id="diag-tw-out">Out: --</text>
+      <text x="590" y="100" text-anchor="middle" class="temp-label" fill="#44aaff" id="diag-tw-in">In: --</text>
+
+      <!-- Flow label between Water Circuit and House -->
+      <text x="710" y="115" text-anchor="middle" font-size="9" fill="#606080" id="diag-flow">-- m3/h</text>
+
+      <!-- Arrow: Water -> House (hot out) -->
+      <line x1="670" y1="75" x2="750" y2="75" stroke="var(--orange)" stroke-width="2" stroke-dasharray="6,4">
+        <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+      </line>
+      <polygon points="745,70 755,75 745,80" fill="var(--orange)"/>
+      <!-- Return arrow (right-to-left toward Water Circuit) -->
+      <line x1="750" y1="95" x2="670" y2="95" stroke="#44aaff" stroke-width="2" stroke-dasharray="6,4">
+        <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+      </line>
+      <polygon points="675,90 665,95 675,100" fill="#44aaff"/>
+
+      <!-- House -->
+      <rect x="755" y="30" width="130" height="110" class="component-box" stroke="var(--green)"/>
+      <!-- Roof -->
+      <polygon points="755,30 820,5 885,30" fill="none" stroke="var(--green)" stroke-width="1.5"/>
+      <text x="820" y="70" text-anchor="middle" class="comp-label" fill="var(--green)">HOUSE</text>
+      <text x="820" y="95" text-anchor="middle" class="temp-label" fill="var(--green)" id="diag-room">--</text>
+      <text x="820" y="115" text-anchor="middle" font-size="9" fill="#606080" id="diag-capacity">-- kW</text>
+    </svg>
+  </div>
+
+  <!-- GRAPHS -->
+  <div class="panel graph-section">
+    <div class="panel-title"><span class="icon">&#9636;</span>TIMESERIES DATA</div>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="temps" onclick="switchTab('temps')">TEMPERATURES</button>
+      <button class="tab-btn" data-tab="power" onclick="switchTab('power')">POWER</button>
+      <button class="tab-btn" data-tab="compressor" onclick="switchTab('compressor')">COMPRESSOR</button>
+      <button class="tab-btn" data-tab="comp-detail" onclick="switchTab('comp-detail')">COMP DETAIL</button>
+      <button class="tab-btn" data-tab="water" onclick="switchTab('water')">WATER</button>
+      <button class="tab-btn" data-tab="cop-defrost" onclick="switchTab('cop-defrost')">COP &amp; DEFROST</button>
+    </div>
+    <div class="graph-canvas-wrap">
+      <canvas id="graph-canvas"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- Fault popup modal -->
+<div class="fault-modal-overlay" id="fault-modal-overlay" onclick="closeFaultModal(event)">
+  <div class="fault-modal" id="fault-modal">
+    <h2>&#9888; FAULT DETAILS</h2>
+    <div id="fault-modal-content"></div>
+    <button class="fault-close" onclick="document.getElementById('fault-modal-overlay').classList.remove('active')">CLOSE</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const REFRESH_INTERVAL = 30000;
+let chart = null;
+let currentTab = 'temps';
+let timeseriesData = [];
+let errorCodes = {};
+let hiddenDatasets = new Set();
+
+// --- Safe value helper ---
+function sf(val, digits) {
+  if (val == null || val === undefined) return '--';
+  if (typeof val === 'number') return digits != null ? val.toFixed(digits) : String(val);
+  return String(val);
+}
+
+// --- Live clock ---
+function updateClock() {
+  const now = new Date();
+  document.getElementById('live-clock').textContent =
+    now.toLocaleTimeString('en-GB', { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// --- Fetch error codes once ---
+async function fetchErrorCodes() {
+  try {
+    const res = await fetch('/api/errorcodes');
+    errorCodes = await res.json();
+  } catch (e) { errorCodes = {}; }
+}
+fetchErrorCodes();
+
+// --- Fetch metadata once ---
+async function fetchMetadata() {
+  try {
+    const res = await fetch('/api/metadata');
+    const m = await res.json();
+    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val || '--'; };
+    el('val-device', m.device);
+    el('val-location', m.metadata && m.metadata.location);
+    el('val-description', m.metadata && m.metadata.description);
+  } catch (e) {}
+}
+fetchMetadata();
+
+// --- Fault modal ---
+function showFaultModal(faultValues) {
+  const content = document.getElementById('fault-modal-content');
+  content.innerHTML = '';
+  const labels = ['Current Fault', 'Fault 1', 'Fault 2', 'Fault 3'];
+  faultValues.forEach((v, i) => {
+    if (v === 0) return;
+    const info = errorCodes[String(v)];
+    const div = document.createElement('div');
+    div.className = 'fault-detail';
+    div.innerHTML = '<div class="fault-code">' + labels[i] + ': ' + v +
+      (info ? ' (' + info.code + ')' : '') + '</div>' +
+      '<div class="fault-msg">' + (info ? info.message : 'Unknown error code') + '</div>';
+    content.appendChild(div);
+  });
+  if (content.children.length === 0) {
+    content.innerHTML = '<div class="fault-detail"><div class="fault-msg">No active faults</div></div>';
+  }
+  document.getElementById('fault-modal-overlay').classList.add('active');
+}
+
+function closeFaultModal(e) {
+  if (e.target === document.getElementById('fault-modal-overlay')) {
+    document.getElementById('fault-modal-overlay').classList.remove('active');
+  }
+}
+
+let currentFaults = [0, 0, 0, 0];
+
+// --- Set metric value with flash ---
+function setVal(id, text, prevMap) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const prev = prevMap[id];
+  if (prev !== undefined && prev !== text) {
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+  el.textContent = text;
+  prevMap[id] = text;
+}
+
+let prevValues = {};
+
+// --- Stale data indicator ---
+function updateStaleIndicator(timestamp) {
+  const dot = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  if (!timestamp) { return; }
+  const age = (Date.now() - new Date(timestamp).getTime()) / 60000; // minutes
+  dot.classList.remove('error', 'stale');
+  if (age < 5) {
+    label.textContent = 'CONNECTED';
+  } else if (age < 10) {
+    dot.classList.add('stale');
+    label.textContent = 'STALE';
+  } else {
+    dot.classList.add('error');
+    label.textContent = 'DISCONNECTED';
+  }
+}
+
+// --- Update dashboard from latest data ---
+function updateDashboard(d) {
+  // Operating mode
+  const modeEl = document.getElementById('mode-indicator');
+  modeEl.classList.remove('mode-off', 'mode-cooling', 'mode-heating');
+  if (d.operating_mode === 0) {
+    modeEl.textContent = 'OFF';
+    modeEl.classList.add('mode-off');
+  } else if (d.operating_mode === 2) {
+    modeEl.textContent = 'COOLING';
+    modeEl.classList.add('mode-cooling');
+  } else if (d.operating_mode === 3) {
+    modeEl.textContent = 'HEATING';
+    modeEl.classList.add('mode-heating');
+  } else {
+    modeEl.textContent = 'MODE ' + d.operating_mode;
+    modeEl.classList.add('mode-off');
+  }
+
+  // Instantaneous COP
+  const cA = d.outdoor_unit_current_a;
+  const cV = d.outdoor_unit_voltage_v;
+  const powerIn = (cA != null && cV != null) ? (cA * cV) / 1000 : null;
+  const hyd = d.hydraulic_module_ability_kw;
+  const cop = (powerIn && powerIn > 0 && hyd != null) ? (hyd / powerIn).toFixed(2) : '--';
+  setVal('cop-val', cop, prevValues);
+
+  // Metrics with null safety
+  setVal('val-capacity', sf(d.unit_capacity_kw) + ' kW', prevValues);
+  setVal('val-hydraulic', sf(d.hydraulic_module_ability_kw, 2) + ' kW', prevValues);
+  setVal('val-t4', sf(d.t4_ambient_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-t3', sf(d.t3_condenser_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-ta', sf(d.ta_room_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-freq', sf(d.operating_frequency_hz) + ' Hz', prevValues);
+  setVal('val-tgt-freq', sf(d.unit_target_frequency_hz) + ' Hz', prevValues);
+  setVal('val-fan', sf(d.fan_speed_rpm) + ' rpm', prevValues);
+  setVal('val-discharge', sf(d.discharge_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-return', sf(d.return_air_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-tf', sf(d.tf_module_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-hours', sf(d.compressor_operation_time_h, 1) + ' h', prevValues);
+  setVal('val-pmv', sf(d.pmv_openness_p), prevValues);
+
+  setVal('val-tw-in', sf(d.water_inlet_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-tw-out', sf(d.water_outlet_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-t1', sf(d.t1_total_water_outlet_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-t1b', sf(d.t1b_water_outlet_after_heater_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-t2', sf(d.t2_refrigerant_liquid_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-t2b', sf(d.t2b_refrigerant_gas_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-flow', sf(d.water_flow_m3h, 2) + ' m\u00B3/h', prevValues);
+  setVal('val-p-high', sf(d.pressure1_high_kpa) + ' kPa', prevValues);
+  setVal('val-p-low', sf(d.pressure2_low_kpa) + ' kPa', prevValues);
+
+  setVal('val-current', sf(d.outdoor_unit_current_a, 1) + ' A', prevValues);
+  setVal('val-voltage', sf(d.outdoor_unit_voltage_v) + ' V', prevValues);
+  setVal('val-dc-i', sf(d.dc_bus_current_a, 1) + ' A', prevValues);
+  setVal('val-dc-v', sf(d.dc_bus_voltage_v, 1) + ' V', prevValues);
+  setVal('val-elec', sf(d.electricity_consumption_kwh, 1) + ' kWh', prevValues);
+  setVal('val-output', sf(d.power_output_kwh, 1) + ' kWh', prevValues);
+  setVal('val-pin', powerIn != null ? powerIn.toFixed(3) + ' kW' : '--', prevValues);
+
+  const elec = d.electricity_consumption_kwh;
+  const pOut = d.power_output_kwh;
+  const lcop = (elec != null && elec > 0 && pOut != null)
+    ? (pOut / elec).toFixed(2) : '--';
+  setVal('val-lcop', lcop, prevValues);
+
+  // Setpoint
+  setVal('val-setpoint', sf(d.setting_water_temperature_t1s_zone1) + ' \u00B0C', prevValues);
+  setVal('val-setpoint-water', sf(d.setting_water_temperature_t1s_zone1) + ' \u00B0C', prevValues);
+
+  // Defrost
+  const defrostBanner = document.getElementById('defrost-banner');
+  const diagDefrost = document.getElementById('diag-defrost');
+  if (d.status_defrost) {
+    defrostBanner.classList.add('active');
+    diagDefrost.style.display = '';
+  } else {
+    defrostBanner.classList.remove('active');
+    diagDefrost.style.display = 'none';
+  }
+
+  // Faults
+  const faults = [
+    d.current_fault != null ? d.current_fault : 0,
+    d.fault_1 != null ? d.fault_1 : 0,
+    d.fault_2 != null ? d.fault_2 : 0,
+    d.fault_3 != null ? d.fault_3 : 0
+  ];
+  currentFaults = faults;
+  const hasFault = faults.some(f => f !== 0);
+  const faultPanel = document.getElementById('panel-fault');
+  faultPanel.classList.toggle('has-fault', hasFault);
+
+  const faultIds = ['val-fault0','val-fault1','val-fault2','val-fault3'];
+  faults.forEach((v, i) => {
+    const el = document.getElementById(faultIds[i]);
+    const info = errorCodes[String(v)];
+    el.textContent = v;
+    el.className = 'metric-value ' + (v !== 0 ? 'alert fault-clickable' : 'ok');
+    if (v !== 0 && info) {
+      el.title = info.code + ': ' + info.message;
+    } else {
+      el.title = '';
+    }
+    el.onclick = v !== 0 ? function() { showFaultModal(currentFaults); } : null;
+  });
+
+  // Timestamp & stale indicator
+  if (d.timestamp) {
+    const ts = new Date(d.timestamp);
+    setVal('val-timestamp', ts.toLocaleString('en-GB', { hour12: false }), prevValues);
+    updateStaleIndicator(d.timestamp);
+  }
+  setVal('val-refreshed', new Date().toLocaleTimeString('en-GB', { hour12: false }), prevValues);
+
+  // Diagram
+  const diagSet = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  diagSet('diag-t4', sf(d.t4_ambient_temp_c, 1) + '\u00B0C');
+  diagSet('diag-fan', 'Fan: ' + sf(d.fan_speed_rpm) + ' rpm');
+  diagSet('diag-discharge', 'Tp: ' + sf(d.discharge_temp_c, 1) + '\u00B0C');
+  diagSet('diag-return', 'Ret: ' + sf(d.return_air_temp_c, 1) + '\u00B0C');
+  diagSet('diag-freq', sf(d.operating_frequency_hz) + ' Hz');
+  diagSet('diag-pmv', 'PMV: ' + sf(d.pmv_openness_p));
+  diagSet('diag-pressure', 'HP:' + sf(d.pressure1_high_kpa) + ' / LP:' + sf(d.pressure2_low_kpa));
+  diagSet('diag-tw-out', 'Out: ' + sf(d.water_outlet_temp_c, 1) + '\u00B0C');
+  diagSet('diag-tw-in', 'In: ' + sf(d.water_inlet_temp_c, 1) + '\u00B0C');
+  diagSet('diag-flow', sf(d.water_flow_m3h, 2) + ' m\u00B3/h');
+  diagSet('diag-room', sf(d.ta_room_temp_c, 1) + '\u00B0C');
+  diagSet('diag-capacity', sf(d.hydraulic_module_ability_kw, 2) + ' kW');
+}
+
+// --- Chart config per tab ---
+function getChartConfig(tab, data) {
+  const labels = data.map(d => {
+    const t = new Date(d.timestamp);
+    return t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  });
+
+  const baseOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 400 },
+    plugins: {
+      legend: {
+        labels: { color: '#c0c0d0', font: { family: 'Share Tech Mono', size: 11 } },
+        onClick: function(e, legendItem, legend) {
+          const idx = legendItem.datasetIndex;
+          const ci = legend.chart;
+          const meta = ci.getDatasetMeta(idx);
+          const label = ci.data.datasets[idx].label;
+          meta.hidden = meta.hidden === null ? !ci.data.datasets[idx].hidden : null;
+          if (meta.hidden) {
+            hiddenDatasets.add(label);
+          } else {
+            hiddenDatasets.delete(label);
+          }
+          ci.update();
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(10,10,20,0.95)',
+        borderColor: 'rgba(0,240,255,0.3)',
+        borderWidth: 1,
+        titleFont: { family: 'Share Tech Mono' },
+        bodyFont: { family: 'Share Tech Mono' }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#606080', font: { family: 'Share Tech Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      y: { ticks: { color: '#606080', font: { family: 'Share Tech Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    }
+  };
+
+  const ds = (label, key, color, yAxisID) => ({
+    label,
+    data: data.map(d => d[key] != null ? d[key] : null),
+    borderColor: color,
+    backgroundColor: color + '22',
+    borderWidth: 2,
+    pointRadius: 3,
+    pointBackgroundColor: color,
+    tension: 0.3,
+    yAxisID: yAxisID || 'y',
+    hidden: hiddenDatasets.has(label)
+  });
+
+  const dsComputed = (label, fn, color, yAxisID) => ({
+    label,
+    data: data.map(fn),
+    borderColor: color,
+    backgroundColor: color + '22',
+    borderWidth: 2,
+    pointRadius: 3,
+    pointBackgroundColor: color,
+    tension: 0.3,
+    yAxisID: yAxisID || 'y',
+    hidden: hiddenDatasets.has(label)
+  });
+
+  if (tab === 'temps') {
+    return {
+      type: 'line', data: { labels, datasets: [
+        ds('Outdoor T4', 't4_ambient_temp_c', '#44aaff'),
+        ds('Return Air', 'return_air_temp_c', '#00f0ff'),
+        ds('Room TA', 'ta_room_temp_c', '#00ff66'),
+        ds('Condenser T3', 't3_condenser_temp_c', '#ff00ff'),
+      ]}, options: baseOpts
+    };
+  }
+  if (tab === 'power') {
+    const opts = JSON.parse(JSON.stringify(baseOpts));
+    opts.plugins = baseOpts.plugins; // preserve legend onClick
+    opts.scales.y1 = { ...opts.scales.y, position: 'right', grid: { drawOnChartArea: false } };
+    return {
+      type: 'line', data: { labels, datasets: [
+        ds('Current (A)', 'outdoor_unit_current_a', '#ff00ff'),
+        ds('Voltage (V)', 'outdoor_unit_voltage_v', '#ffff00', 'y1'),
+        ds('Hydraulic (kW)', 'hydraulic_module_ability_kw', '#00ff66'),
+        dsComputed('Power In (kW)', d => {
+          if (d.outdoor_unit_current_a != null && d.outdoor_unit_voltage_v != null)
+            return +(d.outdoor_unit_current_a * d.outdoor_unit_voltage_v / 1000).toFixed(3);
+          return null;
+        }, '#ff6600'),
+      ]}, options: opts
+    };
+  }
+  if (tab === 'compressor') {
+    const opts = JSON.parse(JSON.stringify(baseOpts));
+    opts.plugins = baseOpts.plugins;
+    opts.scales.y1 = { ...opts.scales.y, position: 'right', grid: { drawOnChartArea: false } };
+    return {
+      type: 'line', data: { labels, datasets: [
+        ds('Frequency (Hz)', 'operating_frequency_hz', '#00f0ff'),
+        ds('Target Freq (Hz)', 'unit_target_frequency_hz', '#606080'),
+        ds('Fan (rpm)', 'fan_speed_rpm', '#ff00ff', 'y1'),
+      ]}, options: opts
+    };
+  }
+  if (tab === 'comp-detail') {
+    const opts = JSON.parse(JSON.stringify(baseOpts));
+    opts.plugins = baseOpts.plugins;
+    opts.scales.y1 = { ...opts.scales.y, position: 'right', grid: { drawOnChartArea: false } };
+    return {
+      type: 'line', data: { labels, datasets: [
+        ds('High Pressure (kPa)', 'pressure1_high_kpa', '#ff00ff'),
+        ds('Low Pressure (kPa)', 'pressure2_low_kpa', '#44aaff'),
+        ds('PMV', 'pmv_openness_p', '#ffff00', 'y1'),
+        ds('Discharge (\u00B0C)', 'discharge_temp_c', '#ff6600', 'y1'),
+      ]}, options: opts
+    };
+  }
+  if (tab === 'water') {
+    const opts = JSON.parse(JSON.stringify(baseOpts));
+    opts.plugins = baseOpts.plugins;
+    opts.scales.y1 = { ...opts.scales.y, position: 'right', grid: { drawOnChartArea: false } };
+    return {
+      type: 'line', data: { labels, datasets: [
+        ds('Water In (\u00B0C)', 'water_inlet_temp_c', '#44aaff'),
+        ds('Water Out (\u00B0C)', 'water_outlet_temp_c', '#ff6600'),
+        ds('Flow (m\u00B3/h)', 'water_flow_m3h', '#00ff66', 'y1'),
+      ]}, options: opts
+    };
+  }
+  if (tab === 'cop-defrost') {
+    const opts = JSON.parse(JSON.stringify(baseOpts));
+    opts.plugins = baseOpts.plugins;
+    const copData = data.map(d => {
+      if (d.outdoor_unit_current_a != null && d.outdoor_unit_voltage_v != null && d.hydraulic_module_ability_kw != null) {
+        const pin = d.outdoor_unit_current_a * d.outdoor_unit_voltage_v / 1000;
+        return pin > 0 ? +(d.hydraulic_module_ability_kw / pin).toFixed(2) : null;
+      }
+      return null;
+    });
+    const defrostData = data.map(d => d.status_defrost ? 1 : null);
+    // Get COP range for defrost fill
+    const validCop = copData.filter(v => v != null);
+    const maxCop = validCop.length > 0 ? Math.max(...validCop) * 1.2 : 5;
+    const defrostFill = data.map(d => d.status_defrost ? maxCop : null);
+    return {
+      type: 'line', data: { labels, datasets: [
+        {
+          label: 'Defrost',
+          data: defrostFill,
+          borderColor: 'rgba(68, 170, 255, 0.3)',
+          backgroundColor: 'rgba(68, 170, 255, 0.15)',
+          borderWidth: 0,
+          pointRadius: 0,
+          fill: 'origin',
+          tension: 0,
+          yAxisID: 'y',
+          hidden: hiddenDatasets.has('Defrost'),
+        },
+        {
+          label: 'COP',
+          data: copData,
+          borderColor: '#00ff66',
+          backgroundColor: '#00ff6622',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#00ff66',
+          tension: 0.3,
+          yAxisID: 'y',
+          hidden: hiddenDatasets.has('COP'),
+        },
+      ]}, options: opts
+    };
+  }
+}
+
+function renderChart() {
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('graph-canvas').getContext('2d');
+  const cfg = getChartConfig(currentTab, timeseriesData);
+  if (cfg) chart = new Chart(ctx, cfg);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  renderChart();
+}
+
+// --- Fetch data ---
+async function fetchLatest() {
+  try {
+    const res = await fetch('/api/latest');
+    const d = await res.json();
+    if (d && Object.keys(d).length > 0) {
+      updateDashboard(d);
+    }
+  } catch (e) {
+    document.getElementById('conn-dot').classList.add('error');
+    document.getElementById('conn-label').textContent = 'OFFLINE';
+  }
+}
+
+async function fetchTimeseries() {
+  try {
+    const res = await fetch('/api/timeseries');
+    timeseriesData = await res.json();
+    renderChart();
+  } catch (e) {}
+}
+
+// --- Init ---
+fetchLatest();
+fetchTimeseries();
+setInterval(fetchLatest, REFRESH_INTERVAL);
+setInterval(fetchTimeseries, REFRESH_INTERVAL);
+</script>
+</body>
+</html>
