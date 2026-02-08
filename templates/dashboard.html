@@ -758,24 +758,24 @@ header .subtitle {
       <!-- Outdoor Air -->
       <rect x="10" y="30" width="130" height="110" class="component-box" stroke="#44aaff"/>
       <text x="75" y="55" text-anchor="middle" class="comp-label" fill="#44aaff">OUTDOOR AIR</text>
-      <text x="75" y="80" text-anchor="middle" class="temp-label" fill="#44aaff" id="diag-t4">--</text>
-      <text x="75" y="100" text-anchor="middle" font-size="9" fill="#606080" id="diag-fan">Fan: --</text>
+      <text x="75" y="80" text-anchor="middle" class="temp-label" fill="#44aaff" id="diag-t4">Air: --</text>
+      <text x="75" y="100" text-anchor="middle" class="temp-label" fill="#44aaff" id="diag-return">Ret: --</text>
+      <text x="75" y="120" text-anchor="middle" font-size="9" fill="#606080" id="diag-fan">Fan: --</text>
 
       <!-- Arrow: Outdoor -> Compressor (cold side) -->
-      <line x1="140" y1="85" x2="230" y2="85" stroke="#44aaff" stroke-width="2" stroke-dasharray="6,4">
+      <line x1="230" y1="85" x2="140" y2="85" stroke="#44aaff" stroke-width="2" stroke-dasharray="6,4">
         <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
       </line>
-      <polygon points="225,80 235,85 225,90" fill="#44aaff"/>
+      <polygon points="150,80 140,85 150,90" fill="#44aaff"/>
       <text x="185" y="78" text-anchor="middle" font-size="9" fill="#44aaff">COLD</text>
 
       <!-- Compressor -->
-      <rect x="235" y="15" width="180" height="140" class="component-box" stroke="var(--magenta)"/>
-      <text x="325" y="40" text-anchor="middle" class="comp-label" fill="var(--magenta)">COMPRESSOR</text>
-      <text x="325" y="65" text-anchor="middle" class="temp-label" fill="var(--orange)" id="diag-discharge">Tp: --</text>
-      <text x="325" y="85" text-anchor="middle" class="temp-label" fill="#44aaff" id="diag-return">Ret: --</text>
-      <text x="325" y="108" text-anchor="middle" font-size="10" fill="var(--cyan)" id="diag-freq">-- Hz</text>
-      <text x="325" y="125" text-anchor="middle" font-size="9" fill="#606080" id="diag-pmv">PMV: --</text>
-      <text x="325" y="145" text-anchor="middle" font-size="9" fill="#606080" id="diag-pressure">HP:-- / LP:--</text>
+      <rect x="235" y="25" width="180" height="120" class="component-box" stroke="var(--magenta)"/>
+      <text x="325" y="50" text-anchor="middle" class="comp-label" fill="var(--magenta)">COMPRESSOR</text>
+      <text x="325" y="75" text-anchor="middle" class="temp-label" fill="var(--orange)" id="diag-discharge">Tp: --</text>
+      <text x="325" y="95" text-anchor="middle" font-size="10" fill="var(--cyan)" id="diag-freq">-- Hz</text>
+      <text x="325" y="110" text-anchor="middle" font-size="9" fill="#606080" id="diag-pmv">PMV: --</text>
+      <text x="325" y="125" text-anchor="middle" font-size="9" fill="#606080" id="diag-pressure">HP:-- / LP:--</text>
       <!-- Defrost overlay text -->
       <text x="325" y="12" text-anchor="middle" font-size="10" fill="#88ddff" id="diag-defrost" style="display:none" font-weight="bold">DEFROST</text>
 
@@ -1069,7 +1069,7 @@ function updateDashboard(d) {
 
   // Diagram
   const diagSet = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-  diagSet('diag-t4', sf(d.t4_ambient_temp_c, 1) + '\u00B0C');
+  diagSet('diag-t4', 'Air: ' + sf(d.t4_ambient_temp_c, 1) + '\u00B0C');
   diagSet('diag-fan', 'Fan: ' + sf(d.fan_speed_rpm) + ' rpm');
   diagSet('diag-discharge', 'Tp: ' + sf(d.discharge_temp_c, 1) + '\u00B0C');
   diagSet('diag-return', 'Ret: ' + sf(d.return_air_temp_c, 1) + '\u00B0C');
