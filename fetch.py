@@ -175,7 +175,7 @@ def main():
         "load_output_defrost": (get_reg(129) & 0x16 == 0x16),
         "unit_target_frequency_hz": get_reg(132),
         "dc_bus_current_a": get_reg(133),
-        "dc_bus_voltage_v": get_reg(134),
+        "dc_bus_voltage_v": (get_reg(134)*10),
         "tf_module_temp_c": get_reg(135),
         "climate_curve_t1s_calculated_value_1": get_reg(136),
         "climate_curve_t1s_calculated_value_2": get_reg(137),
