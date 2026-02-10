@@ -1005,9 +1005,9 @@ function updateDashboard(d) {
   setVal('val-p-high', sf(d.pressure1_high_kpa) + ' kPa', prevValues);
   setVal('val-p-low', sf(d.pressure2_low_kpa) + ' kPa', prevValues);
 
-  setVal('val-current', sf(d.outdoor_unit_current_a, 1) + ' A', prevValues);
+  setVal('val-current', sf(d.outdoor_unit_current_a) + ' A', prevValues);
   setVal('val-voltage', sf(d.outdoor_unit_voltage_v) + ' V', prevValues);
-  setVal('val-dc-i', sf(d.dc_bus_current_a, 1) + ' A', prevValues);
+  setVal('val-dc-i', sf(d.dc_bus_current_a) + ' A', prevValues);
   setVal('val-dc-v', sf(d.dc_bus_voltage_v) + ' V', prevValues);
   setVal('val-elec', sf(d.electricity_consumption_kwh) + ' kWh', prevValues);
   setVal('val-output', sf(d.power_output_kwh) + ' kWh', prevValues);
