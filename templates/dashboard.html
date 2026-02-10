@@ -992,7 +992,7 @@ function updateDashboard(d) {
   setVal('val-discharge', sf(d.discharge_temp_c) + ' \u00B0C', prevValues);
   setVal('val-return', sf(d.return_air_temp_c) + ' \u00B0C', prevValues);
   setVal('val-tf', sf(d.tf_module_temp_c) + ' \u00B0C', prevValues);
-  setVal('val-hours', sf(d.compressor_operation_time_h, 1) + ' h', prevValues);
+  setVal('val-hours', sf(d.compressor_operation_time_h) + ' h', prevValues);
   setVal('val-pmv', sf(d.pmv_openness_p) + ' %', prevValues);
 
   setVal('val-tw-in', sf(d.water_inlet_temp_c) + ' \u00B0C', prevValues);
