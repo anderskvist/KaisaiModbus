@@ -774,7 +774,7 @@ header .subtitle {
       <text x="325" y="50" text-anchor="middle" class="comp-label" fill="var(--magenta)">COMPRESSOR</text>
       <text x="325" y="75" text-anchor="middle" class="temp-label" fill="var(--orange)" id="diag-discharge">Tp: --</text>
       <text x="325" y="95" text-anchor="middle" font-size="10" fill="var(--cyan)" id="diag-freq">-- Hz</text>
-      <text x="325" y="110" text-anchor="middle" font-size="9" fill="#606080" id="diag-pmv">PMV: --</text>
+      <text x="325" y="110" text-anchor="middle" font-size="9" fill="#606080" id="diag-pmv">PMV: -- %</text>
       <text x="325" y="125" text-anchor="middle" font-size="9" fill="#606080" id="diag-pressure">HP:-- / LP:--</text>
       <!-- Defrost overlay text -->
       <text x="325" y="12" text-anchor="middle" font-size="10" fill="#88ddff" id="diag-defrost" style="display:none" font-weight="bold">DEFROST</text>
@@ -983,34 +983,34 @@ function updateDashboard(d) {
   // Metrics with null safety
   setVal('val-capacity', sf(d.unit_capacity_kw) + ' kW', prevValues);
   setVal('val-hydraulic', sf(d.hydraulic_module_ability_kw, 2) + ' kW', prevValues);
-  setVal('val-t4', sf(d.t4_ambient_temp_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-t3', sf(d.t3_condenser_temp_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-ta', sf(d.ta_room_temp_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-t4', sf(d.t4_ambient_temp_c) + ' \u00B0C', prevValues);
+  setVal('val-t3', sf(d.t3_condenser_temp_c) + ' \u00B0C', prevValues);
+  setVal('val-ta', sf(d.ta_room_temp_c) + ' \u00B0C', prevValues);
   setVal('val-freq', sf(d.operating_frequency_hz) + ' Hz', prevValues);
   setVal('val-tgt-freq', sf(d.unit_target_frequency_hz) + ' Hz', prevValues);
   setVal('val-fan', sf(d.fan_speed_rpm) + ' rpm', prevValues);
-  setVal('val-discharge', sf(d.discharge_temp_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-return', sf(d.return_air_temp_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-tf', sf(d.tf_module_temp_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-hours', sf(d.compressor_operation_time_h, 1) + ' h', prevValues);
-  setVal('val-pmv', sf(d.pmv_openness_p), prevValues);
+  setVal('val-discharge', sf(d.discharge_temp_c) + ' \u00B0C', prevValues);
+  setVal('val-return', sf(d.return_air_temp_c) + ' \u00B0C', prevValues);
+  setVal('val-tf', sf(d.tf_module_temp_c) + ' \u00B0C', prevValues);
+  setVal('val-hours', sf(d.compressor_operation_time_h) + ' h', prevValues);
+  setVal('val-pmv', sf(d.pmv_openness_p) + ' %', prevValues);
 
-  setVal('val-tw-in', sf(d.water_inlet_temp_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-tw-out', sf(d.water_outlet_temp_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-t1', sf(d.t1_total_water_outlet_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-t1b', sf(d.t1b_water_outlet_after_heater_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-t2', sf(d.t2_refrigerant_liquid_c, 1) + ' \u00B0C', prevValues);
-  setVal('val-t2b', sf(d.t2b_refrigerant_gas_c, 1) + ' \u00B0C', prevValues);
+  setVal('val-tw-in', sf(d.water_inlet_temp_c) + ' \u00B0C', prevValues);
+  setVal('val-tw-out', sf(d.water_outlet_temp_c) + ' \u00B0C', prevValues);
+  setVal('val-t1', sf(d.t1_total_water_outlet_c) + ' \u00B0C', prevValues);
+  setVal('val-t1b', sf(d.t1b_water_outlet_after_heater_c) + ' \u00B0C', prevValues);
+  setVal('val-t2', sf(d.t2_refrigerant_liquid_c) + ' \u00B0C', prevValues);
+  setVal('val-t2b', sf(d.t2b_refrigerant_gas_c) + ' \u00B0C', prevValues);
   setVal('val-flow', sf(d.water_flow_m3h, 2) + ' m\u00B3/h', prevValues);
   setVal('val-p-high', sf(d.pressure1_high_kpa) + ' kPa', prevValues);
   setVal('val-p-low', sf(d.pressure2_low_kpa) + ' kPa', prevValues);
 
-  setVal('val-current', sf(d.outdoor_unit_current_a, 1) + ' A', prevValues);
+  setVal('val-current', sf(d.outdoor_unit_current_a) + ' A', prevValues);
   setVal('val-voltage', sf(d.outdoor_unit_voltage_v) + ' V', prevValues);
-  setVal('val-dc-i', sf(d.dc_bus_current_a, 1) + ' A', prevValues);
-  setVal('val-dc-v', sf(d.dc_bus_voltage_v, 1) + ' V', prevValues);
-  setVal('val-elec', sf(d.electricity_consumption_kwh, 1) + ' kWh', prevValues);
-  setVal('val-output', sf(d.power_output_kwh, 1) + ' kWh', prevValues);
+  setVal('val-dc-i', sf(d.dc_bus_current_a) + ' A', prevValues);
+  setVal('val-dc-v', sf(d.dc_bus_voltage_v) + ' V', prevValues);
+  setVal('val-elec', sf(d.electricity_consumption_kwh) + ' kWh', prevValues);
+  setVal('val-output', sf(d.power_output_kwh) + ' kWh', prevValues);
   setVal('val-pin', powerIn != null ? powerIn.toFixed(3) + ' kW' : '--', prevValues);
 
   const elec = d.electricity_consumption_kwh;
@@ -1069,17 +1069,17 @@ function updateDashboard(d) {
 
   // Diagram
   const diagSet = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-  diagSet('diag-t4', 'Air: ' + sf(d.t4_ambient_temp_c, 1) + '\u00B0C');
+  diagSet('diag-t4', 'Air: ' + sf(d.t4_ambient_temp_c) + ' \u00B0C');
   diagSet('diag-fan', 'Fan: ' + sf(d.fan_speed_rpm) + ' rpm');
-  diagSet('diag-discharge', 'Tp: ' + sf(d.discharge_temp_c, 1) + '\u00B0C');
-  diagSet('diag-return', 'Ret: ' + sf(d.return_air_temp_c, 1) + '\u00B0C');
+  diagSet('diag-discharge', 'Tp: ' + sf(d.discharge_temp_c) + ' \u00B0C');
+  diagSet('diag-return', 'Ret: ' + sf(d.return_air_temp_c) + ' \u00B0C');
   diagSet('diag-freq', sf(d.operating_frequency_hz) + ' Hz');
-  diagSet('diag-pmv', 'PMV: ' + sf(d.pmv_openness_p));
+  diagSet('diag-pmv', 'PMV: ' + sf(d.pmv_openness_p) + ' %');
   diagSet('diag-pressure', 'HP:' + sf(d.pressure1_high_kpa) + ' / LP:' + sf(d.pressure2_low_kpa));
-  diagSet('diag-tw-out', 'Out: ' + sf(d.water_outlet_temp_c, 1) + '\u00B0C');
-  diagSet('diag-tw-in', 'In: ' + sf(d.water_inlet_temp_c, 1) + '\u00B0C');
+  diagSet('diag-tw-out', 'Out: ' + sf(d.water_outlet_temp_c) + ' \u00B0C');
+  diagSet('diag-tw-in', 'In: ' + sf(d.water_inlet_temp_c) + ' \u00B0C');
   diagSet('diag-flow', sf(d.water_flow_m3h, 2) + ' m\u00B3/h');
-  diagSet('diag-room', sf(d.ta_room_temp_c, 1) + '\u00B0C');
+  diagSet('diag-room', sf(d.ta_room_temp_c) + ' \u00B0C');
   diagSet('diag-capacity', sf(d.hydraulic_module_ability_kw, 2) + ' kW');
 }
 
@@ -1198,7 +1198,7 @@ function getChartConfig(tab, data) {
       type: 'line', data: { labels, datasets: [
         ds('High Pressure (kPa)', 'pressure1_high_kpa', '#ff00ff'),
         ds('Low Pressure (kPa)', 'pressure2_low_kpa', '#44aaff'),
-        ds('PMV', 'pmv_openness_p', '#ffff00', 'y1'),
+        ds('PMV (%)', 'pmv_openness_p', '#ffff00', 'y1'),
         ds('Discharge (\u00B0C)', 'discharge_temp_c', '#ff6600', 'y1'),
       ]}, options: opts
     };
