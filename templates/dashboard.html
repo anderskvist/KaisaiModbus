@@ -774,7 +774,7 @@ header .subtitle {
       <text x="325" y="50" text-anchor="middle" class="comp-label" fill="var(--magenta)">COMPRESSOR</text>
       <text x="325" y="75" text-anchor="middle" class="temp-label" fill="var(--orange)" id="diag-discharge">Tp: --</text>
       <text x="325" y="95" text-anchor="middle" font-size="10" fill="var(--cyan)" id="diag-freq">-- Hz</text>
-      <text x="325" y="110" text-anchor="middle" font-size="9" fill="#606080" id="diag-pmv">PMV: --</text>
+      <text x="325" y="110" text-anchor="middle" font-size="9" fill="#606080" id="diag-pmv">PMV: -- %</text>
       <text x="325" y="125" text-anchor="middle" font-size="9" fill="#606080" id="diag-pressure">HP:-- / LP:--</text>
       <!-- Defrost overlay text -->
       <text x="325" y="12" text-anchor="middle" font-size="10" fill="#88ddff" id="diag-defrost" style="display:none" font-weight="bold">DEFROST</text>
@@ -993,7 +993,7 @@ function updateDashboard(d) {
   setVal('val-return', sf(d.return_air_temp_c, 1) + ' \u00B0C', prevValues);
   setVal('val-tf', sf(d.tf_module_temp_c, 1) + ' \u00B0C', prevValues);
   setVal('val-hours', sf(d.compressor_operation_time_h, 1) + ' h', prevValues);
-  setVal('val-pmv', sf(d.pmv_openness_p), prevValues);
+  setVal('val-pmv', sf(d.pmv_openness_p) + ' %', prevValues);
 
   setVal('val-tw-in', sf(d.water_inlet_temp_c, 1) + ' \u00B0C', prevValues);
   setVal('val-tw-out', sf(d.water_outlet_temp_c, 1) + ' \u00B0C', prevValues);
@@ -1074,7 +1074,7 @@ function updateDashboard(d) {
   diagSet('diag-discharge', 'Tp: ' + sf(d.discharge_temp_c, 1) + '\u00B0C');
   diagSet('diag-return', 'Ret: ' + sf(d.return_air_temp_c, 1) + '\u00B0C');
   diagSet('diag-freq', sf(d.operating_frequency_hz) + ' Hz');
-  diagSet('diag-pmv', 'PMV: ' + sf(d.pmv_openness_p));
+  diagSet('diag-pmv', 'PMV: ' + sf(d.pmv_openness_p) + ' %');
   diagSet('diag-pressure', 'HP:' + sf(d.pressure1_high_kpa) + ' / LP:' + sf(d.pressure2_low_kpa));
   diagSet('diag-tw-out', 'Out: ' + sf(d.water_outlet_temp_c, 1) + '\u00B0C');
   diagSet('diag-tw-in', 'In: ' + sf(d.water_inlet_temp_c, 1) + '\u00B0C');
@@ -1198,7 +1198,7 @@ function getChartConfig(tab, data) {
       type: 'line', data: { labels, datasets: [
         ds('High Pressure (kPa)', 'pressure1_high_kpa', '#ff00ff'),
         ds('Low Pressure (kPa)', 'pressure2_low_kpa', '#44aaff'),
-        ds('PMV', 'pmv_openness_p', '#ffff00', 'y1'),
+        ds('PMV (%)', 'pmv_openness_p', '#ffff00', 'y1'),
         ds('Discharge (\u00B0C)', 'discharge_temp_c', '#ff6600', 'y1'),
       ]}, options: opts
     };
